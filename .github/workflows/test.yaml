@@ -1,0 +1,44 @@
+name: Unit tests and linting
+
+on:
+  workflow_call:
+    inputs:
+      poetry-version:
+        description: 'Poetry version to install'
+        required: true
+        type: string
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: |
+          pip install --upgrade pip
+          pip install "poetry==${{ inputs.poetry-version }}"
+
+      - name: Install dependencies
+        run: poetry install --no-root
+        env:
+          POETRY_VIRTUALENVS_CREATE: "false"
+
+      - name: Run Black
+        run: black --check --diff .
+
+      - name: Run Ruff
+        run: ruff check .
+
+      - name: Run Django checks
+        run: python manage.py check
+
+      - name: Run Django tests
+        run: python manage.py test flights
