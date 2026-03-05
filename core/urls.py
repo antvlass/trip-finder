@@ -24,7 +24,15 @@ urlpatterns = [
     path("flights/", include("flights.urls")),
     path("favicon.ico", RedirectView.as_view(url="/static/icon.ico", permanent=True)),
     path("apple-touch-icon.png", RedirectView.as_view(url="/static/icon.ico", permanent=True)),
-    path("apple-touch-icon-precomposed.png", RedirectView.as_view(url="/static/icon.ico", permanent=True)),
-    path("apple-touch-icon-120x120.png", RedirectView.as_view(url="/static/icon.ico", permanent=True)),
-    path("apple-touch-icon-120x120-precomposed.png", RedirectView.as_view(url="/static/icon.ico", permanent=True)),
+    path(
+        "apple-touch-icon-precomposed.png",
+        RedirectView.as_view(url="/static/icon.ico", permanent=True),
+    ),
+    path(
+        "apple-touch-icon-120x120.png", RedirectView.as_view(url="/static/icon.ico", permanent=True)
+    ),
+    path(
+        "apple-touch-icon-120x120-precomposed.png",
+        RedirectView.as_view(url="/static/icon.ico", permanent=True),
+    ),
 ]
