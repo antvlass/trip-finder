@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for Flight Finder Django Application
+# Multi-stage Dockerfile for Trip Finder Django Application
 
 # Stage 1: Builder
 FROM python:3.12-slim AS builder
