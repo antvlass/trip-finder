@@ -1,16 +1,33 @@
 version: 2
 updates:
-  - package-ecosystem: "pip"
+  - package-ecosystem: docker
     directory: "/"
     schedule:
-      interval: "weekly"
-
-  - package-ecosystem: "docker"
+      interval: weekly
+      time: "09:00"
+      timezone: Europe/Stockholm
+    groups:
+      docker:
+        patterns:
+          - "**"
+  - package-ecosystem: github-actions
     directory: "/"
     schedule:
-      interval: "weekly"
-
-  - package-ecosystem: "github-actions"
+      interval: weekly
+      time: "09:00"
+      timezone: Europe/Stockholm
+    groups:
+      github-actions:
+        patterns:
+          - "**"
+  - package-ecosystem: pip
+    insecure-external-code-execution: allow
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: weekly
+      time: "09:00"
+      timezone: Europe/Stockholm
+    groups:
+      pip:
+        patterns:
+          - "**"
