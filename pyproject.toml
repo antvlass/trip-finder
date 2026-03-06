@@ -20,7 +20,7 @@ ruff = "^0.15.5"
 optional = true
 
 [tool.poetry.group.prod.dependencies]
-gunicorn = "^21.2.0"
+gunicorn = "^25.1.0"
 psycopg2-binary = "^2.9.9"
 
 [build-system]
