@@ -1,11 +1,6 @@
-# Trip Finder
+# TripFinder
 
 A Django web application that helps you find the cheapest round-trip flight combinations for your next trip.
-
-## About
-
-Trip Finder is designed to take the hassle out of searching for affordable flights by automatically scanning multiple months and finding the best price combinations for round-trip travel. 
-Instead of manually checking flight prices day by day, Trip Finder does the heavy lifting for you.
 
 ### Key Features
 

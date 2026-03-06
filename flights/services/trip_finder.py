@@ -25,7 +25,10 @@ class TripFinder:
     @staticmethod
     def is_weekend(outbound: datetime, inbound: datetime) -> bool:
         """Check if a trip occurs on a weekend (Friday-Monday)"""
-        return outbound.weekday() in [4, 5] and inbound.weekday() in [  # Friday or Saturday
+        return outbound.weekday() in [
+            4,
+            5,
+        ] and inbound.weekday() in [  # Friday or Saturday
             6,
             0,
         ]  # Sunday or Monday

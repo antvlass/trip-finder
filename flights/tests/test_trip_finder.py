@@ -98,7 +98,10 @@ class TripFinderTest(TestCase):
             "outbound": {"20260415": {"totalPrice": 1000, "normalPrice": 1200}},
             "inbound": {"20260422": {"totalPrice": 1100, "normalPrice": 1300}},
         }
-        direct_flights = {"outbound": {"202604": ["20260415"]}, "inbound": {"202604": ["20260422"]}}
+        direct_flights = {
+            "outbound": {"202604": ["20260415"]},
+            "inbound": {"202604": ["20260422"]},
+        }
 
         trips = TripFinder.find_cheapest(all_flights, direct_flights, 3, 10, False, 10)
 

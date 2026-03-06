@@ -26,4 +26,4 @@ docker-build: ## Build Docker image
 
 docker-run: ## Run Docker container using .env file (IMAGE=trip-finder:latest, NETWORK=appnet)
 	@if [ ! -f .env ]; then echo "Error: .env file not found. Copy .env.example and fill in the values."; exit 1; fi
-	docker run -d -p 8001:8000 --env-file .env --name trip-finder $(NETWORK_FLAG) $(IMAGE)
+	docker run -d -p 7000:8000 --env-file .env --name trip-finder $(NETWORK_FLAG) $(IMAGE)

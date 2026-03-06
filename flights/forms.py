@@ -6,13 +6,40 @@ class FlightSearchForm(forms.Form):
         max_length=3,
         initial="ARN",
         label="From Airport Code",
-        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g., ARN"}),
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "e.g., ARN or Stockholm",
+                "maxlength": 50,
+            }
+        ),
     )
     outbound = forms.CharField(
         max_length=3,
-        initial="BRU",
         label="To Airport Code",
-        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g., BRU"}),
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "e.g., BRU or Brussels", "maxlength": 50}
+        ),
+    )
+    outbound_2 = forms.CharField(
+        max_length=3,
+        required=False,
+        label="",
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "e.g., CDG or Paris", "maxlength": 50}
+        ),
+    )
+    outbound_3 = forms.CharField(
+        max_length=3,
+        required=False,
+        label="",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "e.g., AMS or Amsterdam",
+                "maxlength": 50,
+            }
+        ),
     )
     duration_min = forms.IntegerField(
         initial=3,
@@ -56,6 +83,12 @@ class FlightSearchForm(forms.Form):
         required=False,
         label="Promotional Code",
         widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": "Enter promo code (optional)"}
+            attrs={
+                "class": "form-control",
+                "placeholder": "Enter promo code (optional)",
+            }
         ),
     )
+
+    def clean_promo_code(self):
+        return self.cleaned_data.get("promo_code", "").strip().upper()

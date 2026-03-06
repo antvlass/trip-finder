@@ -102,7 +102,7 @@ class SearchFlightsViewTest(TestCase):
         response = self.client.post(self.url, form_data)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No flight data available")
+        self.assertContains(response, "No flight data available for BRU.")
 
     @patch.dict(os.environ, {"URL_API": "https://api.example.com"})
     @patch("flights.views.FlightAPIClient")

@@ -1,6 +1,6 @@
 {% extends "flights/base.html" %}
 
-{% block title %}Trip Finder{% endblock %}
+{% block title %}TripFinder{% endblock %}
 
 {% block content %}
 <style>
@@ -25,11 +25,58 @@
     .autocomplete-dropdown .item:hover,
     .autocomplete-dropdown .item.active { background-color: #e9ecef; }
     .autocomplete-dropdown .item .code { font-weight: 600; margin-right: 6px; }
+
+    .tag-input-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+        min-height: 38px;
+        height: auto;
+        padding: 4px 8px;
+        cursor: text;
+    }
+    .tag-input-container .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .tag .tag-remove {
+        background: none;
+        border: none;
+        padding: 0;
+        line-height: 1;
+        font-size: 1rem;
+        cursor: pointer;
+        opacity: 0.6;
+    }
+    .tag .tag-remove:hover { opacity: 1; }
+    .tag-search-input {
+        border: none;
+        outline: none;
+        flex: 1;
+        min-width: 120px;
+        background: transparent;
+        font-size: 0.9rem;
+    }
 </style>
+
 <div class="search-form">
     <h2 class="mb-4">Search Flights</h2>
     <form method="post" action="{% url 'flights:search' %}">
         {% csrf_token %}
+
+        {# Hidden outbound fields — managed by JS tag input #}
+        <div style="display:none">
+            {{ form.outbound }}
+            {{ form.outbound_2 }}
+            {{ form.outbound_3 }}
+        </div>
 
         <div class="row">
             <div class="col-md-6 mb-3">
@@ -44,10 +91,12 @@
             </div>
 
             <div class="col-md-6 mb-3">
-                <label for="{{ form.outbound.id_for_label }}" class="form-label">{{ form.outbound.label }}</label>
+                <label class="form-label">To Airport Code <small class="text-muted">(up to 3)</small></label>
                 <div class="autocomplete-wrapper">
-                    {{ form.outbound }}
-                    <div class="autocomplete-dropdown" id="autocomplete-outbound"></div>
+                    <div class="form-control tag-input-container" id="tag-input-container" onclick="document.getElementById('destination-search').focus()">
+                        <input type="text" id="destination-search" class="tag-search-input" placeholder="Search airport…" autocomplete="off">
+                    </div>
+                    <div class="autocomplete-dropdown" id="autocomplete-destinations"></div>
                 </div>
                 {% if form.outbound.errors %}
                     <div class="text-danger">{{ form.outbound.errors }}</div>
@@ -120,9 +169,18 @@
         </div>
 
         <div class="d-grid gap-2">
-            <button type="submit" class="btn btn-primary btn-lg">Search Flights</button>
+            <button type="submit" class="btn btn-primary btn-lg" id="search-btn">Search Flights</button>
         </div>
     </form>
+    <script>
+    document.querySelector("form").addEventListener("submit", function() {
+        const destinations = selectedDestinations.map(d => d.code);
+        const msg = destinations.length > 1
+            ? `Searching ${destinations.length} destinations: ${destinations.join(", ")}…`
+            : "Searching flights…";
+        showLoading(msg);
+    });
+    </script>
 </div>
 
 <div class="mt-4 p-3 bg-white rounded">
@@ -139,8 +197,59 @@
 
 <script>
 const AUTOCOMPLETE_URL = "{% url 'flights:airport_autocomplete' %}";
+const TAG_COLORS = ["primary", "success", "warning"];
+const HIDDEN_FIELDS = [
+    document.getElementById("{{ form.outbound.id_for_label }}"),
+    document.getElementById("{{ form.outbound_2.id_for_label }}"),
+    document.getElementById("{{ form.outbound_3.id_for_label }}"),
+];
+const MAX_DESTINATIONS = 3;
 
-function initAirportAutocomplete(inputId, dropdownId) {
+let selectedDestinations = [];
+
+function syncHiddenFields() {
+    HIDDEN_FIELDS.forEach((field, i) => {
+        field.value = selectedDestinations[i] ? selectedDestinations[i].code : "";
+    });
+}
+
+function renderTags() {
+    const container = document.getElementById("tag-input-container");
+    const searchInput = document.getElementById("destination-search");
+    container.querySelectorAll(".tag").forEach(t => t.remove());
+    selectedDestinations.forEach((dest, i) => {
+        const tag = document.createElement("span");
+        tag.className = `tag bg-${TAG_COLORS[i]} text-white`;
+        tag.innerHTML = `${dest.code}${dest.name ? " — " + dest.name : ""}
+            <button type="button" class="tag-remove text-white" data-index="${i}">&times;</button>`;
+        tag.querySelector(".tag-remove").addEventListener("click", () => removeDestination(i));
+        container.insertBefore(tag, searchInput);
+    });
+    searchInput.style.display = selectedDestinations.length >= MAX_DESTINATIONS ? "none" : "";
+    searchInput.placeholder = selectedDestinations.length === 0 ? "Search airport…" : "";
+}
+
+function addDestination(code, name) {
+    if (selectedDestinations.length >= MAX_DESTINATIONS) return;
+    if (selectedDestinations.find(d => d.code === code)) return;
+    selectedDestinations.push({ code, name: name || "" });
+    syncHiddenFields();
+    renderTags();
+}
+
+function removeDestination(index) {
+    selectedDestinations.splice(index, 1);
+    syncHiddenFields();
+    renderTags();
+}
+
+// Restore tags from hidden fields on page load (after form error)
+HIDDEN_FIELDS.forEach(field => {
+    if (field.value) addDestination(field.value, "");
+});
+
+// Autocomplete for origin field
+function initAirportAutocomplete(inputId, dropdownId, onSelect) {
     const input = document.getElementById(inputId);
     const dropdown = document.getElementById(dropdownId);
     if (!input || !dropdown) return;
@@ -165,7 +274,7 @@ function initAirportAutocomplete(inputId, dropdownId) {
                 dropdown.querySelectorAll(".item").forEach(item => {
                     item.addEventListener("mousedown", e => {
                         e.preventDefault();
-                        input.value = currentResults[item.dataset.index].code;
+                        onSelect(currentResults[item.dataset.index]);
                         dropdown.style.display = "none";
                     });
                 });
@@ -184,7 +293,7 @@ function initAirportAutocomplete(inputId, dropdownId) {
             activeIndex = Math.max(activeIndex - 1, 0);
         } else if (e.key === "Enter" && activeIndex >= 0) {
             e.preventDefault();
-            input.value = currentResults[activeIndex].code;
+            onSelect(currentResults[activeIndex]);
             dropdown.style.display = "none";
             return;
         } else if (e.key === "Escape") {
@@ -201,7 +310,15 @@ function initAirportAutocomplete(inputId, dropdownId) {
     });
 }
 
-initAirportAutocomplete("{{ form.inbound.id_for_label }}", "autocomplete-inbound");
-initAirportAutocomplete("{{ form.outbound.id_for_label }}", "autocomplete-outbound");
+// Origin field — sets input value as before
+initAirportAutocomplete("{{ form.inbound.id_for_label }}", "autocomplete-inbound", a => {
+    document.getElementById("{{ form.inbound.id_for_label }}").value = a.code;
+});
+
+// Destination tag input — adds a tag instead
+initAirportAutocomplete("destination-search", "autocomplete-destinations", a => {
+    addDestination(a.code, a.name);
+    document.getElementById("destination-search").value = "";
+});
 </script>
 {% endblock %}

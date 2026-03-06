@@ -28,7 +28,11 @@ class AirportModelTest(TestCase):
     def test_airport_ordering(self):
         """Test airports are ordered by code"""
         Airport.objects.create(
-            code="BRU", name="Brussels", country_code="BE", latitude=50.9014, longitude=4.4844
+            code="BRU",
+            name="Brussels",
+            country_code="BE",
+            latitude=50.9014,
+            longitude=4.4844,
         )
         airports = Airport.objects.all()
         self.assertEqual(airports[0].code, "ARN")

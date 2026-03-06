@@ -7,5 +7,9 @@ app_name = "flights"
 urlpatterns = [
     path("", views.index, name="index"),
     path("search/", views.search_flights, name="search"),
-    path("airports/autocomplete/", views.airport_autocomplete, name="airport_autocomplete"),
+    path(
+        "airports/autocomplete/",
+        views.airport_autocomplete,
+        name="airport_autocomplete",
+    ),
 ]

@@ -113,7 +113,7 @@ class FlightSearchFormTest(TestCase):
         """Test form has correct initial values"""
         form = FlightSearchForm()
         self.assertEqual(form.fields["inbound"].initial, "ARN")
-        self.assertEqual(form.fields["outbound"].initial, "BRU")
+        self.assertIsNone(form.fields["outbound"].initial)
         self.assertEqual(form.fields["duration_min"].initial, 3)
         self.assertEqual(form.fields["duration_max"].initial, 10)
         self.assertEqual(form.fields["num_months"].initial, 3)
