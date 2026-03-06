@@ -22,10 +22,9 @@ def airport_autocomplete(request):
     if len(q) < 2 or "airports" not in settings.DATABASES:
         return JsonResponse({"airports": []})
     try:
-        qs = (
-            Airport.objects.using("airports").filter(code__istartswith=q.upper())
-            | Airport.objects.using("airports").filter(name__icontains=q)
-        )
+        qs = Airport.objects.using("airports").filter(
+            code__istartswith=q.upper()
+        ) | Airport.objects.using("airports").filter(name__icontains=q)
         results = [{"code": a.code, "name": a.name} for a in qs[:10]]
     except Exception:
         results = []
