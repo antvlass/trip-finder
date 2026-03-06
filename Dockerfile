@@ -1,46 +1,25 @@
-# Multi-stage Dockerfile for Trip Finder Django Application
-
 # Stage 1: Builder
 FROM python:3.12-slim AS builder
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    POETRY_VERSION=1.8.2 \
-    POETRY_HOME="/opt/poetry" \
-    POETRY_NO_INTERACTION=1 \
-    POETRY_VIRTUALENVS_IN_PROJECT=true \
-    POETRY_VIRTUALENVS_CREATE=true
+ARG POETRY_VERSION=2.1.4
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 -
-ENV PATH="$POETRY_HOME/bin:$PATH"
-
-# Set working directory
 WORKDIR /app
 
-# Copy dependency files
-COPY pyproject.toml poetry.lock* ./
+# Install Poetry and upgrade pip
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir poetry==${POETRY_VERSION}
 
-# Install dependencies
-RUN poetry install --only main --no-root --no-directory
+# Configure Poetry to not create virtual environments
+RUN poetry config virtualenvs.create false
+
+# Copy dependency files first for better layer caching
+COPY poetry.lock pyproject.toml ./
+
+# Install dependencies (production only)
+RUN poetry install --no-interaction --no-ansi --no-root --only main
 
 # Stage 2: Runtime
 FROM python:3.12-slim
-
-# Set environment variables
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/app/.venv/bin:$PATH" \
-    DJANGO_SETTINGS_MODULE=core.settings
 
 # Create non-root user
 RUN groupadd -r django && useradd -r -g django django
@@ -53,8 +32,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /app
 
-# Copy virtual environment from builder
-COPY --from=builder /app/.venv /app/.venv
+# Copy Python packages from builder
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY --chown=django:django . .
@@ -69,15 +49,8 @@ USER django
 # Collect static files
 RUN python manage.py collectstatic --noinput || echo "No static files to collect"
 
-# Run migrations (optional, better to run separately)
-# RUN python manage.py migrate --noinput
-
 # Expose port
 EXPOSE 8000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/flights/')"
 
 # Run application with gunicorn (production)
 # For development, use: CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

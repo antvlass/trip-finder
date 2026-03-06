@@ -1,3 +1,7 @@
+IMAGE ?= trip-finder:latest
+NETWORK ?=
+NETWORK_FLAG = $(if $(NETWORK),--network $(NETWORK),)
+
 .PHONY: test lint format check run docker-build docker-run
 
 test: ## Run tests
@@ -18,10 +22,8 @@ run: ## Run development server
 	poetry run python manage.py runserver
 
 docker-build: ## Build Docker image
-	docker build -t flight-finder:latest .
+	docker build -t $(IMAGE) .
 
-docker-run: ## Run Docker container (set URL_API first)
-	@if [ -z "$$URL_API" ]; then echo "Error: URL_API not set. Use: export URL_API=your-api-url"; exit 1; fi
-	@ALLOWED_HOSTS_VALUE=$${ALLOWED_HOSTS:-localhost,127.0.0.1}; \
-	echo "Starting container with ALLOWED_HOSTS=$$ALLOWED_HOSTS_VALUE"; \
-	docker run -d -p 8001:8000 -e URL_API="$$URL_API" -e ALLOWED_HOSTS="$$ALLOWED_HOSTS_VALUE" --name flight-finder flight-finder:latest
+docker-run: ## Run Docker container using .env file (IMAGE=trip-finder:latest, NETWORK=appnet)
+	@if [ ! -f .env ]; then echo "Error: .env file not found. Copy .env.example and fill in the values."; exit 1; fi
+	docker run -d -p 8001:8000 --env-file .env --name trip-finder $(NETWORK_FLAG) $(IMAGE)

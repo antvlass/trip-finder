@@ -1,15 +1,35 @@
 import logging
 import os
 
+from django.conf import settings
 from django.contrib import messages
+from django.http import JsonResponse
 from django.shortcuts import render
 
 from .forms import FlightSearchForm
+from .models import Airport
 from .services.flight_client import FlightAPIClient
 from .services.trip_finder import TripFinder
 from .services.utils import generate_months
 
 logger = logging.getLogger(__name__)
+
+
+def airport_autocomplete(request):
+    """Return matching airports as JSON from the external airports database.
+    Returns empty list if the database is not configured or unreachable."""
+    q = request.GET.get("q", "").strip()
+    if len(q) < 2 or "airports" not in settings.DATABASES:
+        return JsonResponse({"airports": []})
+    try:
+        qs = (
+            Airport.objects.using("airports").filter(code__istartswith=q.upper())
+            | Airport.objects.using("airports").filter(name__icontains=q)
+        )
+        results = [{"code": a.code, "name": a.name} for a in qs[:10]]
+    except Exception:
+        results = []
+    return JsonResponse({"airports": results})
 
 
 def index(request):

@@ -33,11 +33,9 @@ Instead of manually checking flight prices day by day, Trip Finder does the heav
 # Install dependencies
 poetry install
 
-# Set environment variable
-export URL_API="your-flight-api-url"
-
-# Run migrations
-poetry run python manage.py migrate
+# Configure environment
+cp .env.example .env
+# Edit .env and fill in your values
 
 # Start server
 make run
@@ -61,9 +59,24 @@ make docker-run     # Run Docker container
 ## Docker
 
 ```bash
+# Build the image
 make docker-build
-URL_API="your-flight-api-url"  make docker-run
+
+# Configure environment (if not done already)
+cp .env.example .env
+# Edit .env and fill in your values
+
+# Run the container
+make docker-run
+
+# Run a specific image
+make docker-run IMAGE=trip-finder:1.2.3
+
+# Connect to a Postgres container running in another Docker network
+make docker-run NETWORK=appnet
 ```
+
+When using `NETWORK=appnet`, the container joins the existing Docker network and can reach other containers by their name. Set `AIRPORTS_DB_HOST=postgres` in your `.env` to use the Postgres container directly by name.
 
 ## Requirements
 
@@ -73,7 +86,18 @@ URL_API="your-flight-api-url"  make docker-run
 
 ## Environment Variables
 
-- `URL_API` (required): Flight API base URL
-- `DEBUG` (optional): Set to `False` for production
-- `SECRET_KEY` (optional): Django secret key
-- `ALLOWED_HOSTS` (optional): Comma-separated hostnames/IPs
+Copy `.env.example` to `.env` and fill in your values. The `.env` file is used both locally (loaded by Django via `python-dotenv`) and by Docker (`--env-file .env`).
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `URL_API` | Yes | — | Flight API base URL |
+| `SECRET_KEY` | No | insecure default | Django secret key |
+| `DEBUG` | No | `True` | Set to `False` for production |
+| `ALLOWED_HOSTS` | No | `localhost,127.0.0.1` | Comma-separated hostnames/IPs |
+| `AIRPORTS_DB_HOST` | No | — | Enables airport autocomplete when set |
+| `AIRPORTS_DB_PORT` | No | `5432` | Postgres port |
+| `AIRPORTS_DB_NAME` | No | `postgres` | Postgres database name |
+| `AIRPORTS_DB_USER` | No | `postgres` | Postgres user |
+| `AIRPORTS_DB_PASSWORD` | No | — | Postgres password |
+
+If `AIRPORTS_DB_HOST` is not set, or the server is unreachable, the airport fields fall back to plain text inputs.

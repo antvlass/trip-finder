@@ -12,6 +12,9 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -88,6 +91,17 @@ DATABASES = {
     }
 }
 
+if os.getenv("AIRPORTS_DB_HOST"):
+    DATABASES["airports"] = {
+        "ENGINE": "django.db.backends.postgresql",
+        "HOST": os.getenv("AIRPORTS_DB_HOST"),
+        "PORT": os.getenv("AIRPORTS_DB_PORT", "5432"),
+        "NAME": os.getenv("AIRPORTS_DB_NAME", "postgres"),
+        "USER": os.getenv("AIRPORTS_DB_USER", "postgres"),
+        "PASSWORD": os.getenv("AIRPORTS_DB_PASSWORD", ""),
+        "OPTIONS": {"connect_timeout": 3},
+    }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -118,6 +132,21 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {"format": "%(levelname)s %(name)s %(message)s"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "simple"},
+    },
+    "loggers": {
+        "flights": {"handlers": ["console"], "level": "DEBUG" if DEBUG else "INFO"},
+    },
+}
 
 
 # Static files (CSS, JavaScript, Images)

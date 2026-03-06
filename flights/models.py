@@ -9,6 +9,7 @@ class Airport(models.Model):
     longitude = models.FloatField()
 
     class Meta:
+        managed = False
         db_table = "airports"
         ordering = ["code"]
 
