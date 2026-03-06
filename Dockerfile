@@ -1,5 +1,5 @@
 # Stage 1: Builder
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 ARG POETRY_VERSION=2.1.4
 
@@ -19,7 +19,7 @@ COPY poetry.lock pyproject.toml ./
 RUN poetry install --no-interaction --no-ansi --no-root --only main
 
 # Stage 2: Runtime
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # Create non-root user
 RUN groupadd -r django && useradd -r -g django django
