@@ -1,9 +1,8 @@
 from datetime import datetime
-from typing import List
 
 
-def generate_months(start_month: str = None, num_months: int = 3) -> List[str]:
-    """Generate a list of month strings in YYYYMM format"""
+def generate_months(start_month: str = "", num_months: int = 3) -> list[str]:
+    """Generate a list of month strings in YYYYMM format."""
     if start_month:
         try:
             start = datetime.strptime(start_month, "%Y%m")
@@ -12,11 +11,9 @@ def generate_months(start_month: str = None, num_months: int = 3) -> List[str]:
     else:
         start = datetime.now().replace(day=1)
 
-    months = []
-    year = start.year
-    month = start.month
-
-    for i in range(num_months):
+    months: list[str] = []
+    year, month = start.year, start.month
+    for _ in range(num_months):
         months.append(f"{year}{month:02d}")
         month += 1
         if month > 12:
@@ -27,5 +24,5 @@ def generate_months(start_month: str = None, num_months: int = 3) -> List[str]:
 
 
 def format_price(price: int) -> str:
-    """Format price with thousands separator"""
+    """Format price with thousands separator."""
     return f"{price:,}"

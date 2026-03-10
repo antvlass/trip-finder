@@ -1,0 +1,11 @@
+{
+  "outbound": {
+    "20260410": {"totalPrice": 800, "normalPrice": 1100},
+    "20260417": {"totalPrice": 950, "normalPrice": 1200},
+    "20260424": {"totalPrice": 700, "normalPrice": 1000}
+  },
+  "inbound": {
+    "20260417": {"totalPrice": 750, "normalPrice": 1000},
+    "20260424": {"totalPrice": 850, "normalPrice": 1100}
+  }
+}

@@ -15,6 +15,7 @@ psycopg2-binary = "^2.9.11"
 coverage = "^7.6.1"
 black = "^26.1.0"
 ruff = "^0.15.5"
+responses = "^0.26.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
