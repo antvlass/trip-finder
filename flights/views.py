@@ -73,6 +73,18 @@ def search_flights(request: HttpRequest) -> HttpResponse:
     if not form.is_valid():
         return render(request, "flights/index.html", {"form": form, "form_has_errors": True})
 
+    missing = [
+        name
+        for name, val in [
+            ("FLIGHT_CALENDAR_ENDPOINT", settings.FLIGHT_CALENDAR_ENDPOINT),
+            ("FLIGHT_SCHEDULE_ENDPOINT", settings.FLIGHT_SCHEDULE_ENDPOINT),
+        ]
+        if not val
+    ]
+    if missing:
+        messages.error(request, f"Missing required configuration: {', '.join(missing)}")
+        return render(request, "flights/index.html", {"form": form, "form_has_errors": False})
+
     try:
         promo_code: str = form.cleaned_data.get("promo_code", "")
         inbound: str = form.cleaned_data["inbound"].upper()
