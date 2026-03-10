@@ -52,6 +52,4 @@ RUN python manage.py collectstatic --noinput || echo "No static files to collect
 # Expose port
 EXPOSE 8000
 
-# Run application with gunicorn (production)
-# For development, use: CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

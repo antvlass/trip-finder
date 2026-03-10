@@ -43,6 +43,7 @@
                     <th>Price</th>
                     <th>Normal Price</th>
                     <th>Discount</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -85,10 +86,14 @@
                             <span class="text-muted">0%</span>
                         {% endif %}
                     </td>
+                    <td>
+                        <a href="{{ booking_base_url }}/book-new/revenue/flights?origin={{ trip.outbound_airport }}&destination={{ trip.inbound_airport }}&outboundDate={{ trip.outbound|date:"Y-m-d" }}&inboundDate={{ trip.inbound|date:"Y-m-d" }}&adults=1&youths=0&children=0&infants=0{% if promo_code %}&cepId={{ promo_code }}{% endif %}"
+                           class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener">Book</a>
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="9" class="text-center">No trips found</td>
+                    <td colspan="10" class="text-center">No trips found</td>
                 </tr>
                 {% endfor %}
             </tbody>

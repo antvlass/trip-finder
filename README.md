@@ -85,7 +85,9 @@ Copy `.env.example` to `.env` and fill in your values. The `.env` file is used b
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `URL_API` | Yes | — | Flight API base URL |
+| `FLIGHT_CALENDAR_ENDPOINT` | Yes | — | Full URL for the flight calendar/pricing API |
+| `FLIGHT_SCHEDULE_ENDPOINT` | Yes | — | Full URL for the direct flight schedule API |
+| `BOOKING_BASE_URL` | Yes | — | Base URL used to build booking links |
 | `SECRET_KEY` | No | insecure default | Django secret key |
 | `DEBUG` | No | `True` | Set to `False` for production |
 | `ALLOWED_HOSTS` | No | `localhost,127.0.0.1` | Comma-separated hostnames/IPs |

@@ -1,5 +1,5 @@
 import logging
-import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from django.conf import settings
 from django.contrib import messages
@@ -45,21 +45,29 @@ def _get_airport_names(codes):
 def _search_destination(
     client, inbound, destination, months, promo_code, duration_min, duration_max, only_weekends, top
 ):
-    """Search for trips to a single destination. Returns list of trips or None on failure."""
+    """Search for trips to a single destination.
+    Returns (result, warnings) where result is None / False / list of trips."""
+    warnings = []
+
     direct_flights = client.fetch_direct_flights(inbound, destination)
     if not direct_flights.get("outbound") or not direct_flights.get("inbound"):
-        return None
+        return None, warnings
+
+    def fetch_month(month):
+        return client.fetch_monthly_flights(month, inbound, destination, promo_code)
 
     flight_data_list = []
-    for month in months:
-        try:
-            flight_data = client.fetch_monthly_flights(month, inbound, destination, promo_code)
-            flight_data_list.append(flight_data)
-        except Exception as e:
-            logger.warning(f"Failed to fetch flights for {month} to {destination}: {e}")
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        future_to_month = {executor.submit(fetch_month, month): month for month in months}
+        for future in as_completed(future_to_month):
+            month = future_to_month[future]
+            try:
+                flight_data_list.append(future.result())
+            except Exception as e:
+                warnings.append(f"Failed to fetch flights for {month} to {destination}: {e}")
 
     if not flight_data_list:
-        return False
+        return False, warnings
 
     merged = TripFinder.merge_flights_data(flight_data_list)
     trips = TripFinder.find_cheapest(
@@ -70,13 +78,13 @@ def _search_destination(
         trip["outbound_airport"] = inbound
         trip["inbound_airport"] = destination
 
-    return trips
+    return trips, warnings
 
 
 def index(request):
     """Main search page"""
     form = FlightSearchForm()
-    return render(request, "flights/index.html", {"form": form})
+    return render(request, "flights/index.html", {"form": form, "form_has_errors": False})
 
 
 def search_flights(request):
@@ -86,17 +94,9 @@ def search_flights(request):
 
     form = FlightSearchForm(request.POST)
     if not form.is_valid():
-        return render(request, "flights/index.html", {"form": form})
+        return render(request, "flights/index.html", {"form": form, "form_has_errors": True})
 
     try:
-        api_url = os.environ.get("URL_API")
-        if not api_url:
-            messages.error(
-                request,
-                "API URL not configured. Please set URL_API environment variable.",
-            )
-            return render(request, "flights/index.html", {"form": form})
-
         promo_code = form.cleaned_data.get("promo_code", "")
         inbound = form.cleaned_data["inbound"].upper()
         duration_min = form.cleaned_data["duration_min"]
@@ -115,31 +115,44 @@ def search_flights(request):
         months = generate_months(start_month, num_months)
         logger.info(f"Scanning months: {months}, destinations: {destinations}")
 
-        client = FlightAPIClient(api_url)
+        client = FlightAPIClient()
         all_trips = []
 
-        for destination in destinations:
-            trips = _search_destination(
-                client,
-                inbound,
-                destination,
-                months,
-                promo_code,
-                duration_min,
-                duration_max,
-                only_weekends,
-                top,
-            )
-            if trips is None:
-                messages.warning(request, f"No direct flights available to {destination}.")
-            elif trips is False:
-                messages.warning(request, f"No flight data available for {destination}.")
-            elif trips:
-                all_trips.extend(trips)
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            future_to_dest = {
+                executor.submit(
+                    _search_destination,
+                    client,
+                    inbound,
+                    dest,
+                    months,
+                    promo_code,
+                    duration_min,
+                    duration_max,
+                    only_weekends,
+                    top,
+                ): dest
+                for dest in destinations
+            }
+            for future in as_completed(future_to_dest):
+                dest = future_to_dest[future]
+                try:
+                    result, dest_warnings = future.result()
+                    for w in dest_warnings:
+                        logger.warning(w)
+                    if result is None:
+                        messages.warning(request, f"No direct flights available to {dest}.")
+                    elif result is False:
+                        messages.warning(request, f"No flight data available for {dest}.")
+                    elif result:
+                        all_trips.extend(result)
+                except Exception as e:
+                    logger.error(f"Error searching {dest}: {e}")
+                    messages.warning(request, f"Error searching flights to {dest}.")
 
         if not all_trips:
             messages.info(request, "No trips found matching your criteria.")
-            return render(request, "flights/index.html", {"form": form})
+            return render(request, "flights/index.html", {"form": form, "form_has_errors": False})
 
         all_trips.sort(key=lambda x: x["price"])
 
@@ -153,10 +166,12 @@ def search_flights(request):
             "form": form,
             "trips": all_trips,
             "total_count": len(all_trips),
+            "promo_code": promo_code,
             "promo_code_used": bool(promo_code),
             "airport_names": airport_names,
             "destination_colors": destination_colors,
             "multi_destination": len(destinations) > 1,
+            "booking_base_url": settings.BOOKING_BASE_URL,
         }
 
         return render(request, "flights/results.html", context)
@@ -164,4 +179,4 @@ def search_flights(request):
     except Exception as e:
         logger.error(f"Error searching flights: {e}")
         messages.error(request, f"An error occurred while searching for flights: {str(e)}")
-        return render(request, "flights/index.html", {"form": form})
+        return render(request, "flights/index.html", {"form": form, "form_has_errors": False})

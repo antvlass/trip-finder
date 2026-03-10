@@ -174,6 +174,18 @@
     </form>
     <script>
     document.querySelector("form").addEventListener("submit", function() {
+        const formState = {
+            inbound: document.getElementById("{{ form.inbound.id_for_label }}").value,
+            duration_min: document.getElementById("{{ form.duration_min.id_for_label }}").value,
+            duration_max: document.getElementById("{{ form.duration_max.id_for_label }}").value,
+            start_month: document.getElementById("{{ form.start_month.id_for_label }}").value,
+            num_months: document.getElementById("{{ form.num_months.id_for_label }}").value,
+            top: document.getElementById("{{ form.top.id_for_label }}").value,
+            only_weekends: document.getElementById("{{ form.only_weekends.id_for_label }}").checked,
+            promo_code: document.getElementById("{{ form.promo_code.id_for_label }}").value,
+            destinations: selectedDestinations,
+        };
+        try { localStorage.setItem("tripFinderForm", JSON.stringify(formState)); } catch(e) {}
         const destinations = selectedDestinations.map(d => d.code);
         const msg = destinations.length > 1
             ? `Searching ${destinations.length} destinations: ${destinations.join(", ")}…`
@@ -320,5 +332,29 @@ initAirportAutocomplete("destination-search", "autocomplete-destinations", a => 
     addDestination(a.code, a.name);
     document.getElementById("destination-search").value = "";
 });
+
+// Restore form state from localStorage on fresh page loads (not after form errors)
+const FORM_HAS_ERRORS = {{ form_has_errors|yesno:"true,false" }};
+if (!FORM_HAS_ERRORS) {
+    try {
+        const saved = localStorage.getItem("tripFinderForm");
+        if (saved) {
+            const d = JSON.parse(saved);
+            const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+            set("{{ form.inbound.id_for_label }}", d.inbound);
+            set("{{ form.duration_min.id_for_label }}", d.duration_min);
+            set("{{ form.duration_max.id_for_label }}", d.duration_max);
+            set("{{ form.start_month.id_for_label }}", d.start_month);
+            set("{{ form.num_months.id_for_label }}", d.num_months);
+            set("{{ form.top.id_for_label }}", d.top);
+            set("{{ form.promo_code.id_for_label }}", d.promo_code);
+            const cb = document.getElementById("{{ form.only_weekends.id_for_label }}");
+            if (cb) cb.checked = !!d.only_weekends;
+            if (Array.isArray(d.destinations)) {
+                d.destinations.forEach(dest => addDestination(dest.code, dest.name));
+            }
+        }
+    } catch(e) {}
+}
 </script>
 {% endblock %}

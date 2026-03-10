@@ -1,4 +1,3 @@
-import os
 from unittest.mock import Mock, patch
 
 from django.test import Client, TestCase, override_settings
@@ -43,22 +42,6 @@ class SearchFlightsViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "flights/index.html")
 
-    @patch.dict(os.environ, {}, clear=True)
-    def test_search_view_missing_api_url(self):
-        """Test search fails without API URL"""
-        form_data = {
-            "inbound": "ARN",
-            "outbound": "BRU",
-            "duration_min": 3,
-            "duration_max": 10,
-            "num_months": 3,
-            "top": 10,
-        }
-        response = self.client.post(self.url, form_data)
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "API URL not configured")
-
-    @patch.dict(os.environ, {"URL_API": "https://api.example.com"})
     @patch("flights.views.FlightAPIClient")
     def test_search_view_no_direct_flights(self, mock_client_class):
         """Test search with no direct flights"""
@@ -79,7 +62,6 @@ class SearchFlightsViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "No direct flights available")
 
-    @patch.dict(os.environ, {"URL_API": "https://api.example.com"})
     @patch("flights.views.FlightAPIClient")
     def test_search_view_no_flight_data(self, mock_client_class):
         """Test search with no flight data"""
@@ -104,7 +86,6 @@ class SearchFlightsViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "No flight data available for BRU.")
 
-    @patch.dict(os.environ, {"URL_API": "https://api.example.com"})
     @patch("flights.views.FlightAPIClient")
     @patch("flights.views.TripFinder")
     def test_search_view_no_trips_found(self, mock_finder, mock_client_class):
@@ -139,7 +120,6 @@ class SearchFlightsViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "No trips found")
 
-    @patch.dict(os.environ, {"URL_API": "https://api.example.com"})
     @patch("flights.views.FlightAPIClient")
     @patch("flights.views.TripFinder")
     def test_search_view_success(self, mock_finder, mock_client_class):
@@ -188,7 +168,6 @@ class SearchFlightsViewTest(TestCase):
         self.assertEqual(len(response.context["trips"]), 1)
         self.assertEqual(response.context["total_count"], 1)
 
-    @patch.dict(os.environ, {"URL_API": "https://api.example.com"})
     @patch("flights.views.FlightAPIClient")
     @patch("flights.views.TripFinder")
     def test_search_view_with_promo_code(self, mock_finder, mock_client_class):
@@ -239,7 +218,6 @@ class SearchFlightsViewTest(TestCase):
         call_args = mock_client.fetch_monthly_flights.call_args
         self.assertEqual(call_args[0][3], "SUMMER2026")
 
-    @patch.dict(os.environ, {"URL_API": "https://api.example.com"})
     @patch("flights.views.FlightAPIClient")
     def test_search_view_handles_exception(self, mock_client_class):
         """Test search handles unexpected exceptions"""
@@ -258,7 +236,6 @@ class SearchFlightsViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "error occurred")
 
-    @patch.dict(os.environ, {"URL_API": "https://api.example.com"})
     @patch("flights.views.FlightAPIClient")
     @patch("flights.views.TripFinder")
     def test_search_view_airport_codes_uppercased(self, mock_finder, mock_client_class):

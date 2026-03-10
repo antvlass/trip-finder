@@ -150,6 +150,18 @@ LOGGING = {
 }
 
 
+BOOKING_BASE_URL = os.getenv("BOOKING_BASE_URL")
+FLIGHT_CALENDAR_ENDPOINT = os.getenv("FLIGHT_CALENDAR_ENDPOINT")
+FLIGHT_SCHEDULE_ENDPOINT = os.getenv("FLIGHT_SCHEDULE_ENDPOINT")
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "TIMEOUT": 3600,
+    }
+}
+
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 

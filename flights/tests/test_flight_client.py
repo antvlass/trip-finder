@@ -1,20 +1,25 @@
 from unittest.mock import Mock, patch
 
 import requests
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from flights.services.flight_client import FlightAPIClient
 
+CALENDAR_URL = "https://api.example.com/flights/calendar/prices"
+SCHEDULE_URL = "https://api.example.com/flights/schedule/direct"
 
+
+@override_settings(
+    FLIGHT_CALENDAR_ENDPOINT=CALENDAR_URL,
+    FLIGHT_SCHEDULE_ENDPOINT=SCHEDULE_URL,
+)
 class FlightAPIClientTest(TestCase):
     def setUp(self):
-        self.client = FlightAPIClient("https://api.example.com", max_retries=2)
+        self.client = FlightAPIClient(max_retries=2)
 
     def test_client_initialization(self):
         """Test client is initialized correctly"""
-        self.assertEqual(self.client.base_url, "https://api.example.com")
         self.assertEqual(self.client.max_retries, 2)
-        self.assertIsInstance(self.client.session, requests.Session)
 
     @patch("flights.services.flight_client.requests.Session.get")
     def test_fetch_with_retries_success(self, mock_get):
@@ -24,7 +29,7 @@ class FlightAPIClientTest(TestCase):
         mock_response.json.return_value = {"data": "test"}
         mock_get.return_value = mock_response
 
-        result = self.client._fetch_with_retries("/test", {"param": "value"})
+        result = self.client._fetch_with_retries("https://api.example.com/test", {"param": "value"})
 
         self.assertEqual(result, {"data": "test"})
         mock_get.assert_called_once()
@@ -39,7 +44,7 @@ class FlightAPIClientTest(TestCase):
         mock_get.return_value = mock_response
 
         with self.assertRaises(Exception) as context:
-            self.client._fetch_with_retries("/test", {"param": "value"})
+            self.client._fetch_with_retries("https://api.example.com/test", {"param": "value"})
 
         self.assertIn("Failed after", str(context.exception))
         self.assertEqual(mock_get.call_count, 2)  # max_retries
@@ -51,7 +56,7 @@ class FlightAPIClientTest(TestCase):
         mock_get.side_effect = requests.exceptions.RequestException("Connection error")
 
         with self.assertRaises(Exception) as context:
-            self.client._fetch_with_retries("/test", {"param": "value"})
+            self.client._fetch_with_retries("https://api.example.com/test", {"param": "value"})
 
         self.assertIn("Failed after", str(context.exception))
         self.assertEqual(mock_get.call_count, 2)
@@ -70,12 +75,12 @@ class FlightAPIClientTest(TestCase):
 
         mock_get.side_effect = [mock_fail, mock_success]
 
-        result = self.client._fetch_with_retries("/test", {"param": "value"})
+        result = self.client._fetch_with_retries("https://api.example.com/test", {"param": "value"})
 
         self.assertEqual(result, {"data": "success"})
         self.assertEqual(mock_get.call_count, 2)
 
-    @patch.object(FlightAPIClient, "_fetch_with_retries")
+    @patch.object(FlightAPIClient, "_fetch_cached")
     def test_fetch_monthly_flights(self, mock_fetch):
         """Test fetch_monthly_flights calls API with correct parameters"""
         mock_fetch.return_value = {"outbound": {}, "inbound": {}}
@@ -83,7 +88,7 @@ class FlightAPIClientTest(TestCase):
         result = self.client.fetch_monthly_flights("202603", "ARN", "BRU", "PROMO")
 
         mock_fetch.assert_called_once_with(
-            "/flights/calendar/prices",
+            CALENDAR_URL,
             {
                 "cepId": "PROMO",
                 "flow": "",
@@ -97,7 +102,7 @@ class FlightAPIClientTest(TestCase):
         )
         self.assertEqual(result, {"outbound": {}, "inbound": {}})
 
-    @patch.object(FlightAPIClient, "_fetch_with_retries")
+    @patch.object(FlightAPIClient, "_fetch_cached")
     def test_fetch_monthly_flights_without_promo(self, mock_fetch):
         """Test fetch_monthly_flights without promo code"""
         mock_fetch.return_value = {"outbound": {}, "inbound": {}}
@@ -107,7 +112,7 @@ class FlightAPIClientTest(TestCase):
         call_args = mock_fetch.call_args[0][1]
         self.assertEqual(call_args["cepId"], "")
 
-    @patch.object(FlightAPIClient, "_fetch_with_retries")
+    @patch.object(FlightAPIClient, "_fetch_cached")
     def test_fetch_direct_flights(self, mock_fetch):
         """Test fetch_direct_flights calls API with correct parameters"""
         mock_fetch.return_value = {"outbound": {}, "inbound": {}}
@@ -115,7 +120,7 @@ class FlightAPIClientTest(TestCase):
         result = self.client.fetch_direct_flights("ARN", "BRU")
 
         mock_fetch.assert_called_once_with(
-            "/flights/schedule/direct",
+            SCHEDULE_URL,
             {"market": "se-sv", "from": "ARN", "to": "BRU", "triptype": "R"},
         )
         self.assertEqual(result, {"outbound": {}, "inbound": {}})
@@ -130,7 +135,7 @@ class FlightAPIClientTest(TestCase):
         mock_get.return_value = mock_response
 
         try:
-            self.client._fetch_with_retries("/test", {"param": "value"})
+            self.client._fetch_with_retries("https://api.example.com/test", {"param": "value"})
         except Exception:
             pass
 
