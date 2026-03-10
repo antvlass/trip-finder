@@ -4,20 +4,45 @@
 {% block title %}Search Results - TripFinder{% endblock %}
 
 {% block content %}
-<div class="mb-3">
-    <a href="{% url 'flights:index' %}" class="btn btn-secondary">← New Search</a>
-</div>
-
 <div class="results-table">
-    <h2 class="mb-4">Search Results</h2>
-    <p class="text-muted">Found {{ total_count }} trip(s)</p>
 
-    {% if promo_code_used %}
-        <div class="alert alert-success mb-3">
-            <strong>✓ Promotional code applied!</strong> Discounts are shown below.
-        </div>
-    {% endif %}
+    {# ── Search summary bar ── #}
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3 pb-3 border-bottom">
+        <a href="{% url 'flights:index' %}" class="btn btn-sm btn-outline-secondary me-1">← Edit Search</a>
+        <strong>{{ search_summary.inbound }}</strong>
+        <span class="text-muted">→</span>
+        {% for dest in search_summary.destinations %}
+            {% with destination_colors|get_item:dest as color %}
+                <span class="badge bg-{{ color|default:'secondary' }}">
+                    {{ dest }}{% with airport_names|get_item:dest as name %}{% if name %} — {{ name }}{% endif %}{% endwith %}
+                </span>
+            {% endwith %}
+        {% endfor %}
+        <span class="text-muted small">·</span>
+        <span class="small">{{ search_summary.duration }}</span>
+        <span class="text-muted small">·</span>
+        <span class="small">{{ search_summary.months }}</span>
+        <span class="text-muted small">·</span>
+        <span class="small">Top {{ search_summary.top }}</span>
+        {% if search_summary.only_weekends %}
+            <span class="badge bg-info text-dark">weekends only</span>
+        {% endif %}
+        {% if search_summary.promo_code %}
+            <span class="badge bg-primary">promo: {{ search_summary.promo_code }}</span>
+        {% endif %}
+    </div>
 
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <p class="mb-0 text-muted">Found {{ total_count }} trip(s)</p>
+
+        {% if promo_code_used %}
+            <div class="alert alert-success py-1 px-2 mb-0">
+                <strong>✓ Promo code applied</strong>
+            </div>
+        {% endif %}
+    </div>
+
+    {# ── Destination filter badges (multi-destination only) ── #}
     {% if multi_destination %}
         <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
             <span class="me-1 text-muted small">Filter:</span>
@@ -30,7 +55,8 @@
         </div>
     {% endif %}
 
-    <div class="table-responsive">
+    {# ── Desktop table (hidden on mobile) ── #}
+    <div class="d-none d-md-block table-responsive">
         <table class="table table-striped table-hover">
             <thead class="table-dark">
                 <tr>
@@ -99,21 +125,58 @@
             </tbody>
         </table>
     </div>
+
+    {# ── Mobile cards (hidden on desktop) ── #}
+    <div class="d-md-none">
+        {% for trip in trips %}
+        <div class="card mb-2 shadow-sm" data-destination="{{ trip.inbound_airport }}">
+            <div class="card-body py-2 px-3">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                    <div>
+                        {% if multi_destination %}
+                            {% with destination_colors|get_item:trip.inbound_airport as color %}
+                                <span class="badge bg-{{ color|default:'secondary' }}">{{ trip.inbound_airport }}</span>
+                            {% endwith %}
+                        {% else %}
+                            <strong>{{ trip.outbound_airport }}</strong> → <strong>{{ trip.inbound_airport }}</strong>
+                        {% endif %}
+                        {% with airport_names|get_item:trip.inbound_airport as name %}
+                            {% if name %}<small class="text-muted ms-1">{{ name }}</small>{% endif %}
+                        {% endwith %}
+                    </div>
+                    <span class="badge bg-success fs-6 text-nowrap">{{ trip.price|floatformat:0 }} SEK</span>
+                </div>
+                <div class="small text-muted mb-2">
+                    {{ trip.outbound|date:"d/m/Y" }} → {{ trip.inbound|date:"d/m/Y" }}
+                    · {{ trip.duration }} days
+                    {% if trip.discount > 0 %}
+                        · <span class="badge bg-warning text-dark">-{{ trip.discount|floatformat:1 }}%</span>
+                    {% endif %}
+                </div>
+                <a href="{{ booking_base_url }}/book-new/revenue/flights?origin={{ trip.outbound_airport }}&destination={{ trip.inbound_airport }}&outboundDate={{ trip.outbound|date:"Y-m-d" }}&inboundDate={{ trip.inbound|date:"Y-m-d" }}&adults=1&youths=0&children=0&infants=0{% if promo_code %}&cepId={{ promo_code }}{% endif %}"
+                   class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener">Book</a>
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-center text-muted">No trips found</p>
+        {% endfor %}
+    </div>
+
 </div>
 
 <div class="mt-3 text-center">
-    <a href="{% url 'flights:index' %}" class="btn btn-primary">Search Again</a>
+    <a href="{% url 'flights:index' %}" class="btn btn-primary">New Search</a>
 </div>
 
-{% if multi_destination %}
 <script>
+{% if multi_destination %}
 function filterDestination(code, btn) {
-    document.querySelectorAll("[data-destination]").forEach(row => {
-        row.style.display = (!code || row.dataset.destination === code) ? "" : "none";
+    document.querySelectorAll("[data-destination]").forEach(el => {
+        el.style.display = (!code || el.dataset.destination === code) ? "" : "none";
     });
     document.querySelectorAll(".btn[onclick^='filterDestination']").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
 }
-</script>
 {% endif %}
+</script>
 {% endblock %}

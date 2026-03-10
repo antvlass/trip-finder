@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from django.conf import settings
 from django.contrib import messages
@@ -42,16 +43,33 @@ def _get_airport_names(codes: set[str]) -> dict[str, str]:
         return {}
 
 
+def _format_month_range(months: list[str]) -> str:
+    """Format ['202604', '202606'] as 'Apr – Jun 2026'."""
+    if not months:
+        return ""
+    start = datetime.strptime(months[0], "%Y%m")
+    end = datetime.strptime(months[-1], "%Y%m")
+    if start == end:
+        return start.strftime("%b %Y")
+    if start.year == end.year:
+        return f"{start.strftime('%b')} – {end.strftime('%b %Y')}"
+    return f"{start.strftime('%b %Y')} – {end.strftime('%b %Y')}"
+
+
 def index(request: HttpRequest) -> HttpResponse:
     form = FlightSearchForm()
     return render(request, "flights/index.html", {"form": form, "form_has_errors": False})
 
 
 def search_flights(request: HttpRequest) -> HttpResponse:
-    if request.method != "POST":
+    if request.method == "POST":
+        data = request.POST
+    elif request.GET:
+        data = request.GET
+    else:
         return index(request)
 
-    form = FlightSearchForm(request.POST)
+    form = FlightSearchForm(data)
     if not form.is_valid():
         return render(request, "flights/index.html", {"form": form, "form_has_errors": True})
 
@@ -97,6 +115,16 @@ def search_flights(request: HttpRequest) -> HttpResponse:
         airport_names = _get_airport_names(all_codes)
         destination_colors = {dest: BADGE_COLORS[i] for i, dest in enumerate(destinations)}
 
+        search_summary = {
+            "inbound": inbound,
+            "destinations": destinations,
+            "duration": f"{params.duration_min}–{params.duration_max} days",
+            "months": _format_month_range(months),
+            "top": params.top,
+            "only_weekends": params.only_weekends,
+            "promo_code": promo_code,
+        }
+
         return render(
             request,
             "flights/results.html",
@@ -110,6 +138,7 @@ def search_flights(request: HttpRequest) -> HttpResponse:
                 "destination_colors": destination_colors,
                 "multi_destination": len(destinations) > 1,
                 "booking_base_url": settings.BOOKING_BASE_URL,
+                "search_summary": search_summary,
             },
         )
 

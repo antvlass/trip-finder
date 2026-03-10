@@ -4,97 +4,116 @@
 
 {% block content %}
 <style>
+    /* ── Autocomplete ── */
     .autocomplete-wrapper { position: relative; }
     .autocomplete-dropdown {
-        position: absolute;
-        z-index: 1000;
-        width: 100%;
-        background: white;
-        border: 1px solid #ced4da;
-        border-top: none;
-        border-radius: 0 0 4px 4px;
-        max-height: 220px;
-        overflow-y: auto;
-        display: none;
+        position: absolute; z-index: 1000; width: 100%;
+        background: white; border: 1px solid #ced4da; border-top: none;
+        border-radius: 0 0 4px 4px; max-height: 220px; overflow-y: auto; display: none;
     }
-    .autocomplete-dropdown .item {
-        padding: 8px 12px;
-        cursor: pointer;
-        font-size: 0.9rem;
-    }
+    .autocomplete-dropdown .item { padding: 8px 12px; cursor: pointer; font-size: 0.9rem; }
     .autocomplete-dropdown .item:hover,
     .autocomplete-dropdown .item.active { background-color: #e9ecef; }
     .autocomplete-dropdown .item .code { font-weight: 600; margin-right: 6px; }
 
+    /* ── Destination tag input ── */
     .tag-input-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        align-items: center;
-        min-height: 38px;
-        height: auto;
-        padding: 4px 8px;
-        cursor: text;
+        display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+        min-height: 38px; height: auto; padding: 4px 8px; cursor: text;
     }
     .tag-input-container .tag {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        white-space: nowrap;
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 2px 8px; border-radius: 4px; font-size: 0.85rem;
+        font-weight: 600; white-space: nowrap;
     }
     .tag .tag-remove {
-        background: none;
-        border: none;
-        padding: 0;
-        line-height: 1;
-        font-size: 1rem;
-        cursor: pointer;
-        opacity: 0.6;
+        background: none; border: none; padding: 0;
+        line-height: 1; font-size: 1rem; cursor: pointer; opacity: 0.6;
     }
     .tag .tag-remove:hover { opacity: 1; }
     .tag-search-input {
-        border: none;
-        outline: none;
-        flex: 1;
-        min-width: 120px;
-        background: transparent;
-        font-size: 0.9rem;
+        border: none; outline: none; flex: 1; min-width: 120px;
+        background: transparent; font-size: 0.9rem;
+    }
+
+    /* ── Month picker ── */
+    .month-chip {
+        padding: 6px 14px; border-radius: 20px; border: 1.5px solid #dee2e6;
+        background: white; cursor: pointer; font-size: 0.85rem;
+        transition: background 0.12s, border-color 0.12s, color 0.12s;
+        user-select: none; white-space: nowrap;
+    }
+    .month-chip:hover { border-color: #0d6efd; color: #0d6efd; }
+    .month-chip.selected { background: #0d6efd; border-color: #0d6efd; color: white; }
+
+    /* ── Dual range slider ── */
+    .dual-range-container { position: relative; height: 36px; }
+    .range-track {
+        position: absolute; top: 50%; transform: translateY(-50%);
+        width: 100%; height: 6px; background: #dee2e6; border-radius: 3px;
+    }
+    .range-fill {
+        position: absolute; height: 100%; background: #0d6efd; border-radius: 3px;
+    }
+    .dual-range-container input[type="range"] {
+        position: absolute; top: 50%; transform: translateY(-50%);
+        width: 100%; height: 6px; margin: 0;
+        -webkit-appearance: none; appearance: none;
+        background: transparent; pointer-events: none;
+    }
+    .dual-range-container input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none; appearance: none;
+        width: 22px; height: 22px; background: #0d6efd; border-radius: 50%;
+        cursor: pointer; pointer-events: all;
+        border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+    .dual-range-container input[type="range"]::-moz-range-thumb {
+        width: 22px; height: 22px; background: #0d6efd; border-radius: 50%;
+        cursor: pointer; pointer-events: all;
+        border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
     }
 </style>
 
 <div class="search-form">
     <h2 class="mb-4">Search Flights</h2>
-    <form method="post" action="{% url 'flights:search' %}">
-        {% csrf_token %}
+    <form method="get" action="{% url 'flights:search' %}">
 
-        {# Hidden outbound fields — managed by JS tag input #}
+        {# Hidden fields — managed by custom UI components and tag input #}
         <div style="display:none">
+            {{ form.inbound }}
             {{ form.outbound }}
             {{ form.outbound_2 }}
             {{ form.outbound_3 }}
+            {{ form.duration_min }}
+            {{ form.duration_max }}
+            {{ form.start_month }}
+            {{ form.num_months }}
+            {{ form.top }}
         </div>
 
+        {# ── Row 1: From / To ── #}
         <div class="row">
             <div class="col-md-6 mb-3">
-                <label for="{{ form.inbound.id_for_label }}" class="form-label">{{ form.inbound.label }}</label>
+                <label class="form-label">{{ form.inbound.label }}</label>
                 <div class="autocomplete-wrapper">
-                    {{ form.inbound }}
+                    <div class="form-control tag-input-container" id="inbound-tag-container"
+                         onclick="if(!originCode) document.getElementById('inbound-search').focus()">
+                        <input type="text" id="inbound-search" class="tag-search-input"
+                               placeholder="Search airport…" autocomplete="off">
+                    </div>
                     <div class="autocomplete-dropdown" id="autocomplete-inbound"></div>
                 </div>
                 {% if form.inbound.errors %}
                     <div class="text-danger">{{ form.inbound.errors }}</div>
                 {% endif %}
             </div>
-
             <div class="col-md-6 mb-3">
                 <label class="form-label">To Airport Code <small class="text-muted">(up to 3)</small></label>
                 <div class="autocomplete-wrapper">
-                    <div class="form-control tag-input-container" id="tag-input-container" onclick="document.getElementById('destination-search').focus()">
-                        <input type="text" id="destination-search" class="tag-search-input" placeholder="Search airport…" autocomplete="off">
+                    <div class="form-control tag-input-container" id="tag-input-container"
+                         onclick="document.getElementById('destination-search').focus()">
+                        <input type="text" id="destination-search" class="tag-search-input"
+                               placeholder="Search airport…" autocomplete="off">
                     </div>
                     <div class="autocomplete-dropdown" id="autocomplete-destinations"></div>
                 </div>
@@ -104,52 +123,36 @@
             </div>
         </div>
 
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label for="{{ form.duration_min.id_for_label }}" class="form-label">{{ form.duration_min.label }}</label>
-                {{ form.duration_min }}
-                {% if form.duration_min.errors %}
-                    <div class="text-danger">{{ form.duration_min.errors }}</div>
-                {% endif %}
-            </div>
+        {# ── Month picker ── #}
+        <div class="mb-4">
+            <label class="form-label">
+                Search Period
+                <small class="text-muted ms-1">select up to 3 months</small>
+            </label>
+            <div id="month-picker" class="d-flex flex-wrap gap-2"></div>
+        </div>
 
-            <div class="col-md-6 mb-3">
-                <label for="{{ form.duration_max.id_for_label }}" class="form-label">{{ form.duration_max.label }}</label>
-                {{ form.duration_max }}
-                {% if form.duration_max.errors %}
-                    <div class="text-danger">{{ form.duration_max.errors }}</div>
-                {% endif %}
+        {# ── Duration slider ── #}
+        <div class="mb-4">
+            <label class="form-label">
+                Trip Duration:
+                <strong id="duration-display"></strong>
+            </label>
+            <div class="dual-range-container mt-2">
+                <div class="range-track">
+                    <div class="range-fill" id="range-fill"></div>
+                </div>
+                <input type="range" id="slider-min" min="1" max="30" step="1">
+                <input type="range" id="slider-max" min="1" max="30" step="1">
+            </div>
+            <div class="d-flex justify-content-between mt-1">
+                <small class="text-muted">1 day</small>
+                <small class="text-muted">30 days</small>
             </div>
         </div>
 
+        {# ── Row 3: Promo / Top N / Weekends ── #}
         <div class="row">
-            <div class="col-md-6 mb-3">
-                <label for="{{ form.start_month.id_for_label }}" class="form-label">{{ form.start_month.label }}</label>
-                {{ form.start_month }}
-                <small class="form-text text-muted">Leave empty to start from current month</small>
-                {% if form.start_month.errors %}
-                    <div class="text-danger">{{ form.start_month.errors }}</div>
-                {% endif %}
-            </div>
-
-            <div class="col-md-6 mb-3">
-                <label for="{{ form.num_months.id_for_label }}" class="form-label">{{ form.num_months.label }}</label>
-                {{ form.num_months }}
-                {% if form.num_months.errors %}
-                    <div class="text-danger">{{ form.num_months.errors }}</div>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-md-4 mb-3">
-                <label for="{{ form.top.id_for_label }}" class="form-label">{{ form.top.label }}</label>
-                {{ form.top }}
-                {% if form.top.errors %}
-                    <div class="text-danger">{{ form.top.errors }}</div>
-                {% endif %}
-            </div>
-
             <div class="col-md-4 mb-3">
                 <label for="{{ form.promo_code.id_for_label }}" class="form-label">{{ form.promo_code.label }}</label>
                 {{ form.promo_code }}
@@ -157,7 +160,19 @@
                     <div class="text-danger">{{ form.promo_code.errors }}</div>
                 {% endif %}
             </div>
-
+            <div class="col-md-4 mb-3">
+                <label class="form-label d-block">Results per destination</label>
+                <div class="btn-group w-100" role="group">
+                    <input type="radio" class="btn-check" name="top-btn" id="top-5"  value="5"  autocomplete="off">
+                    <label class="btn btn-outline-secondary" for="top-5">5</label>
+                    <input type="radio" class="btn-check" name="top-btn" id="top-10" value="10" autocomplete="off">
+                    <label class="btn btn-outline-secondary" for="top-10">10</label>
+                    <input type="radio" class="btn-check" name="top-btn" id="top-20" value="20" autocomplete="off">
+                    <label class="btn btn-outline-secondary" for="top-20">20</label>
+                    <input type="radio" class="btn-check" name="top-btn" id="top-50" value="50" autocomplete="off">
+                    <label class="btn btn-outline-secondary" for="top-50">50</label>
+                </div>
+            </div>
             <div class="col-md-4 mb-3">
                 <div class="form-check mt-4">
                     {{ form.only_weekends }}
@@ -169,39 +184,17 @@
         </div>
 
         <div class="d-grid gap-2">
-            <button type="submit" class="btn btn-primary btn-lg" id="search-btn">Search Flights</button>
+            <button type="submit" class="btn btn-primary btn-lg">Search Flights</button>
         </div>
     </form>
-    <script>
-    document.querySelector("form").addEventListener("submit", function() {
-        const formState = {
-            inbound: document.getElementById("{{ form.inbound.id_for_label }}").value,
-            duration_min: document.getElementById("{{ form.duration_min.id_for_label }}").value,
-            duration_max: document.getElementById("{{ form.duration_max.id_for_label }}").value,
-            start_month: document.getElementById("{{ form.start_month.id_for_label }}").value,
-            num_months: document.getElementById("{{ form.num_months.id_for_label }}").value,
-            top: document.getElementById("{{ form.top.id_for_label }}").value,
-            only_weekends: document.getElementById("{{ form.only_weekends.id_for_label }}").checked,
-            promo_code: document.getElementById("{{ form.promo_code.id_for_label }}").value,
-            destinations: selectedDestinations,
-        };
-        try { localStorage.setItem("tripFinderForm", JSON.stringify(formState)); } catch(e) {}
-        const destinations = selectedDestinations.map(d => d.code);
-        const msg = destinations.length > 1
-            ? `Searching ${destinations.length} destinations: ${destinations.join(", ")}…`
-            : "Searching flights…";
-        showLoading(msg);
-    });
-    </script>
 </div>
 
 <div class="mt-4 p-3 bg-white rounded">
     <h4>How to use:</h4>
     <ul>
         <li>Enter airport codes (e.g., ARN for Stockholm Arlanda, BRU for Brussels)</li>
-        <li>Set minimum and maximum trip duration in days</li>
-        <li>Optionally specify a start month (YYYYMM format, e.g., 202603)</li>
-        <li>Choose how many months to scan for flights</li>
+        <li>Select up to 3 consecutive months to search</li>
+        <li>Drag the range slider to set minimum and maximum trip duration</li>
         <li>Enter a promotional code to see discounted prices (optional)</li>
         <li>Filter by weekend trips if you prefer Friday-Monday travel</li>
     </ul>
@@ -216,9 +209,11 @@ const HIDDEN_FIELDS = [
     document.getElementById("{{ form.outbound_3.id_for_label }}"),
 ];
 const MAX_DESTINATIONS = 3;
-
 let selectedDestinations = [];
 
+// ─────────────────────────────────────────────
+// Destination tag input
+// ─────────────────────────────────────────────
 function syncHiddenFields() {
     HIDDEN_FIELDS.forEach((field, i) => {
         field.value = selectedDestinations[i] ? selectedDestinations[i].code : "";
@@ -260,20 +255,19 @@ HIDDEN_FIELDS.forEach(field => {
     if (field.value) addDestination(field.value, "");
 });
 
-// Autocomplete for origin field
+// ─────────────────────────────────────────────
+// Airport autocomplete
+// ─────────────────────────────────────────────
 function initAirportAutocomplete(inputId, dropdownId, onSelect) {
     const input = document.getElementById(inputId);
     const dropdown = document.getElementById(dropdownId);
     if (!input || !dropdown) return;
-
-    let activeIndex = -1;
-    let currentResults = [];
+    let activeIndex = -1, currentResults = [];
 
     input.addEventListener("input", () => {
         const q = input.value.trim();
         activeIndex = -1;
         if (q.length < 2) { dropdown.style.display = "none"; return; }
-
         fetch(`${AUTOCOMPLETE_URL}?q=${encodeURIComponent(q)}`)
             .then(r => r.json())
             .then(data => {
@@ -297,43 +291,254 @@ function initAirportAutocomplete(inputId, dropdownId, onSelect) {
     input.addEventListener("keydown", e => {
         const items = dropdown.querySelectorAll(".item");
         if (!items.length) return;
-        if (e.key === "ArrowDown") {
-            e.preventDefault();
-            activeIndex = Math.min(activeIndex + 1, items.length - 1);
-        } else if (e.key === "ArrowUp") {
-            e.preventDefault();
-            activeIndex = Math.max(activeIndex - 1, 0);
-        } else if (e.key === "Enter" && activeIndex >= 0) {
-            e.preventDefault();
-            onSelect(currentResults[activeIndex]);
-            dropdown.style.display = "none";
-            return;
-        } else if (e.key === "Escape") {
-            dropdown.style.display = "none";
-            return;
-        }
+        if (e.key === "ArrowDown") { e.preventDefault(); activeIndex = Math.min(activeIndex + 1, items.length - 1); }
+        else if (e.key === "ArrowUp") { e.preventDefault(); activeIndex = Math.max(activeIndex - 1, 0); }
+        else if (e.key === "Enter" && activeIndex >= 0) {
+            e.preventDefault(); onSelect(currentResults[activeIndex]); dropdown.style.display = "none"; return;
+        } else if (e.key === "Escape") { dropdown.style.display = "none"; return; }
         items.forEach((item, i) => item.classList.toggle("active", i === activeIndex));
     });
 
     document.addEventListener("click", e => {
-        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.style.display = "none";
-        }
+        if (!input.contains(e.target) && !dropdown.contains(e.target)) dropdown.style.display = "none";
     });
 }
 
-// Origin field — sets input value as before
-initAirportAutocomplete("{{ form.inbound.id_for_label }}", "autocomplete-inbound", a => {
-    document.getElementById("{{ form.inbound.id_for_label }}").value = a.code;
+// ─────────────────────────────────────────────
+// Origin tag (single airport, dark badge)
+// ─────────────────────────────────────────────
+let originCode = "", originName = "";
+
+function setOrigin(code, name) {
+    originCode = code;
+    originName = name || "";
+    document.getElementById("{{ form.inbound.id_for_label }}").value = code;
+    renderOriginTag();
+}
+
+function clearOrigin() {
+    originCode = ""; originName = "";
+    document.getElementById("{{ form.inbound.id_for_label }}").value = "";
+    renderOriginTag();
+    document.getElementById("inbound-search").focus();
+}
+
+function renderOriginTag() {
+    const container = document.getElementById("inbound-tag-container");
+    const searchInput = document.getElementById("inbound-search");
+    container.querySelectorAll(".tag").forEach(t => t.remove());
+    if (originCode) {
+        const tag = document.createElement("span");
+        tag.className = "tag bg-dark text-white";
+        tag.innerHTML = `${originCode}${originName ? " — " + originName : ""}
+            <button type="button" class="tag-remove text-white">&times;</button>`;
+        tag.querySelector(".tag-remove").addEventListener("click", clearOrigin);
+        container.insertBefore(tag, searchInput);
+        searchInput.style.display = "none";
+    } else {
+        searchInput.style.display = "";
+    }
+}
+
+function initOriginFromField() {
+    const val = document.getElementById("{{ form.inbound.id_for_label }}").value;
+    if (val) setOrigin(val, "");
+}
+
+// When user types manually without selecting from dropdown
+document.getElementById("inbound-search").addEventListener("blur", function() {
+    if (this.value.trim() && !originCode) setOrigin(this.value.trim().toUpperCase(), "");
 });
 
-// Destination tag input — adds a tag instead
+initAirportAutocomplete("inbound-search", "autocomplete-inbound", a => {
+    setOrigin(a.code, a.name);
+    document.getElementById("inbound-search").value = "";
+});
 initAirportAutocomplete("destination-search", "autocomplete-destinations", a => {
     addDestination(a.code, a.name);
     document.getElementById("destination-search").value = "";
 });
 
-// Restore form state from localStorage on fresh page loads (not after form errors)
+// ─────────────────────────────────────────────
+// Month picker
+// ─────────────────────────────────────────────
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+let selectedMonths = []; // sorted "YYYYMM" strings
+
+function monthKey(year, month) {
+    return `${year}${String(month).padStart(2, "0")}`;
+}
+function monthNum(key) {
+    return parseInt(key.slice(0, 4)) * 12 + parseInt(key.slice(4)) - 1;
+}
+function isContiguous(months) {
+    for (let i = 1; i < months.length; i++) {
+        if (monthNum(months[i]) - monthNum(months[i - 1]) !== 1) return false;
+    }
+    return true;
+}
+
+function renderMonthPicker() {
+    const container = document.getElementById("month-picker");
+    container.innerHTML = "";
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+        const key = monthKey(d.getFullYear(), d.getMonth() + 1);
+        const label = `${MONTH_NAMES[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "month-chip" + (selectedMonths.includes(key) ? " selected" : "");
+        chip.textContent = label;
+        chip.dataset.key = key;
+        chip.addEventListener("click", () => toggleMonth(key));
+        container.appendChild(chip);
+    }
+    syncMonthFields();
+}
+
+function toggleMonth(key) {
+    if (selectedMonths.includes(key)) {
+        selectedMonths = selectedMonths.filter(m => m !== key);
+        // Keep only the largest contiguous block after removal
+        if (selectedMonths.length && !isContiguous(selectedMonths)) {
+            const parts = [];
+            let cur = [selectedMonths[0]];
+            for (let i = 1; i < selectedMonths.length; i++) {
+                if (monthNum(selectedMonths[i]) - monthNum(selectedMonths[i-1]) === 1) {
+                    cur.push(selectedMonths[i]);
+                } else {
+                    parts.push(cur); cur = [selectedMonths[i]];
+                }
+            }
+            parts.push(cur);
+            selectedMonths = parts.sort((a, b) => b.length - a.length)[0];
+        }
+    } else {
+        const candidate = [...selectedMonths, key].sort();
+        if (isContiguous(candidate) && candidate.length <= 3) {
+            selectedMonths = candidate;
+        } else {
+            selectedMonths = [key];
+        }
+    }
+    renderMonthPicker();
+}
+
+function syncMonthFields() {
+    const sorted = [...selectedMonths].sort();
+    document.getElementById("{{ form.start_month.id_for_label }}").value = sorted[0] || "";
+    document.getElementById("{{ form.num_months.id_for_label }}").value = sorted.length || 1;
+}
+
+function initMonthsFromFields() {
+    const startVal = document.getElementById("{{ form.start_month.id_for_label }}").value;
+    const numVal = parseInt(document.getElementById("{{ form.num_months.id_for_label }}").value) || 3;
+    selectedMonths = [];
+    if (startVal && startVal.length === 6) {
+        let year = parseInt(startVal.slice(0, 4)), month = parseInt(startVal.slice(4));
+        for (let i = 0; i < Math.min(numVal, 3); i++) {
+            selectedMonths.push(monthKey(year, month));
+            if (++month > 12) { month = 1; year++; }
+        }
+    } else {
+        const now = new Date();
+        for (let i = 0; i < 3; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+            selectedMonths.push(monthKey(d.getFullYear(), d.getMonth() + 1));
+        }
+    }
+    renderMonthPicker();
+}
+
+// ─────────────────────────────────────────────
+// Dual range slider (duration)
+// ─────────────────────────────────────────────
+const sliderMin = document.getElementById("slider-min");
+const sliderMax = document.getElementById("slider-max");
+const RANGE_SCALE = 30;
+
+function updateDurationUI() {
+    let lo = parseInt(sliderMin.value);
+    let hi = parseInt(sliderMax.value);
+    if (lo > hi) { [lo, hi] = [hi, lo]; sliderMin.value = lo; sliderMax.value = hi; }
+    const pct = v => (v - 1) / (RANGE_SCALE - 1) * 100;
+    const fill = document.getElementById("range-fill");
+    fill.style.left = pct(lo) + "%";
+    fill.style.right = (100 - pct(hi)) + "%";
+    document.getElementById("duration-display").textContent = `${lo} – ${hi} days`;
+    document.getElementById("{{ form.duration_min.id_for_label }}").value = lo;
+    document.getElementById("{{ form.duration_max.id_for_label }}").value = hi;
+}
+
+sliderMin.addEventListener("input", updateDurationUI);
+sliderMax.addEventListener("input", updateDurationUI);
+
+function initDurationFromFields() {
+    const lo = parseInt(document.getElementById("{{ form.duration_min.id_for_label }}").value) || 3;
+    const hi = parseInt(document.getElementById("{{ form.duration_max.id_for_label }}").value) || 10;
+    sliderMin.value = Math.min(lo, RANGE_SCALE);
+    sliderMax.value = Math.min(hi, RANGE_SCALE);
+    updateDurationUI();
+}
+
+// ─────────────────────────────────────────────
+// Top N segmented buttons
+// ─────────────────────────────────────────────
+const topField = document.getElementById("{{ form.top.id_for_label }}");
+
+document.querySelectorAll("[name='top-btn']").forEach(radio => {
+    radio.addEventListener("change", () => { topField.value = radio.value; });
+});
+
+function initTopFromField() {
+    const val = topField.value || "10";
+    const radio = document.querySelector(`[name="top-btn"][value="${val}"]`);
+    if (radio) {
+        radio.checked = true;
+    } else {
+        // Value not in presets — pick nearest
+        const nearest = [5, 10, 20, 50].reduce((prev, cur) =>
+            Math.abs(cur - parseInt(val)) < Math.abs(prev - parseInt(val)) ? cur : prev
+        );
+        const fallback = document.querySelector(`[name="top-btn"][value="${nearest}"]`);
+        if (fallback) { fallback.checked = true; topField.value = nearest; }
+    }
+}
+
+// ─────────────────────────────────────────────
+// Form submit — loading overlay + localStorage
+// ─────────────────────────────────────────────
+document.querySelector("form").addEventListener("submit", function() {
+    const formState = {
+        inbound: originCode,
+        inboundName: originName,
+        duration_min: document.getElementById("{{ form.duration_min.id_for_label }}").value,
+        duration_max: document.getElementById("{{ form.duration_max.id_for_label }}").value,
+        start_month: document.getElementById("{{ form.start_month.id_for_label }}").value,
+        num_months: document.getElementById("{{ form.num_months.id_for_label }}").value,
+        top: document.getElementById("{{ form.top.id_for_label }}").value,
+        only_weekends: document.getElementById("{{ form.only_weekends.id_for_label }}").checked,
+        promo_code: document.getElementById("{{ form.promo_code.id_for_label }}").value,
+        destinations: selectedDestinations,
+    };
+    try { localStorage.setItem("tripFinderForm", JSON.stringify(formState)); } catch(e) {}
+    const dests = selectedDestinations.map(d => d.code);
+    const msg = dests.length > 1
+        ? `Searching ${dests.length} destinations: ${dests.join(", ")}…`
+        : "Searching flights…";
+    showLoading(msg);
+});
+
+// ─────────────────────────────────────────────
+// Initialise all custom UIs from current field values
+// ─────────────────────────────────────────────
+initOriginFromField();
+initDurationFromFields();
+initTopFromField();
+initMonthsFromFields();
+
+// Restore from localStorage on fresh page loads (not after form errors)
 const FORM_HAS_ERRORS = {{ form_has_errors|yesno:"true,false" }};
 if (!FORM_HAS_ERRORS) {
     try {
@@ -341,7 +546,7 @@ if (!FORM_HAS_ERRORS) {
         if (saved) {
             const d = JSON.parse(saved);
             const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
-            set("{{ form.inbound.id_for_label }}", d.inbound);
+            if (d.inbound) setOrigin(d.inbound, d.inboundName || "");
             set("{{ form.duration_min.id_for_label }}", d.duration_min);
             set("{{ form.duration_max.id_for_label }}", d.duration_max);
             set("{{ form.start_month.id_for_label }}", d.start_month);
@@ -349,10 +554,15 @@ if (!FORM_HAS_ERRORS) {
             set("{{ form.top.id_for_label }}", d.top);
             set("{{ form.promo_code.id_for_label }}", d.promo_code);
             const cb = document.getElementById("{{ form.only_weekends.id_for_label }}");
-            if (cb) cb.checked = !!d.only_weekends;
+            if (cb && d.only_weekends != null) cb.checked = !!d.only_weekends;
             if (Array.isArray(d.destinations)) {
                 d.destinations.forEach(dest => addDestination(dest.code, dest.name));
             }
+            // Re-sync custom UIs after restoring field values
+            initDurationFromFields();
+            initTopFromField();
+            initMonthsFromFields();
+            // origin already set via setOrigin() above
         }
     } catch(e) {}
 }

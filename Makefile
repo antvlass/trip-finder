@@ -19,7 +19,7 @@ format: ## Format code with black
 build: test check lint format
 
 run: ## Run development server
-	poetry run python manage.py runserver
+	poetry run python manage.py runserver 0.0.0.0:8000
 
 docker-build: ## Build Docker image
 	docker build -t $(IMAGE) .
