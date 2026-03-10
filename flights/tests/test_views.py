@@ -25,7 +25,11 @@ class IndexViewTest(TestCase):
         self.assertContains(response, "outbound")
 
 
-@override_settings(DEBUG=True)
+@override_settings(
+    DEBUG=True,
+    FLIGHT_CALENDAR_ENDPOINT="https://example.com/calendar",
+    FLIGHT_SCHEDULE_ENDPOINT="https://example.com/schedule",
+)
 class SearchFlightsViewTest(TestCase):
     def setUp(self) -> None:
         self.client = Client()
